@@ -1,0 +1,26 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+  config.vm.box = "dharmab/centos7"
+
+  config.vm.provider "virtualbox" do |v|
+    v.memory = 2048
+    v.cpus = 2
+  end
+
+  config.vm.provision "shell", inline: <<-SHELL
+    sudo yum makecache fast
+    sudo yum update -y
+    sudo yum install -y epel-release
+    sudo yum install -y yum-utils rpm-build redhat-rpm-config spectool git autoconf gcc-c++ js js-devel
+    [ -d ~/rpmbuild ] && rm -rf ~/rpmbuild
+    mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+    cp /vagrant/{*.cfg,*.patch,*.spec,*.init,*.service,*.conf} ~/rpmbuild/SOURCES
+    cd ~/rpmbuild && spectool -g -R SOURCES/couchdb.spec
+    rpmbuild -bs SOURCES/couchdb.spec
+    sudo yum-builddep -y SRPMS/couchdb-*.src.rpm
+    rpmbuild --rebuild SRPMS/couchdb-*.src.rpm
+    cp ~/rpmbuild/RPMS/x86_64/*.rpm /vagrant
+  SHELL
+end
